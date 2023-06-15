@@ -216,7 +216,7 @@ data:
   ldap_config.py: |
     import yaml
     import ldap
-    from django_auth_ldap.config import LDAPSearch
+    from django_auth_ldap.config import LDAPSearch, LDAPSearchUnion
     from importlib import import_module
     def _load_yaml():
       with open('/run/config/netbox/ldap.yaml', 'r') as f:
@@ -239,9 +239,14 @@ data:
     AUTH_LDAP_CONNECTION_OPTIONS = {
         ldap.OPT_REFERRALS: 0
     }
-    AUTH_LDAP_USER_SEARCH = LDAPSearch(AUTH_LDAP_USER_SEARCH_BASEDN,
-                                      ldap.SCOPE_SUBTREE,
-                                      "(" + AUTH_LDAP_USER_SEARCH_ATTR + "=%(user)s)")
+    {{- if .Values.remoteAuth.ldap.userSearchDnList }}
+    AUTH_LDAP_USER_SEARCH = LDAPSearchUnion(
+    {{- range $userSearchDnList := .Values.remoteAuth.ldap.userSearchDnList }}
+      LDAPSearch("{{ $userSearchDnList }}", ldap.SCOPE_SUBTREE, "(sAMAccountName=%(user)s)"),
+    {{- end }}
+    )
+    {{- end }}
+
     AUTH_LDAP_GROUP_SEARCH = LDAPSearch(AUTH_LDAP_GROUP_SEARCH_BASEDN, ldap.SCOPE_SUBTREE,
                                   "(objectClass=" + AUTH_LDAP_GROUP_SEARCH_CLASS + ")")
     AUTH_LDAP_GROUP_TYPE = _import_group_type(AUTH_LDAP_GROUP_TYPE)
